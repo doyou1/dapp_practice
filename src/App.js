@@ -1,5 +1,6 @@
-
 import Web3 from "web3";
+import React, {useState, } from "react";
+
 
 const web3 = new Web3("http://127.0.0.1:8545/");
 //const abi = require("./Storage.json");
@@ -17,7 +18,13 @@ contract.deploy({
 });
 
 const App = () => {
-  
+
+  const [test, setTest] = useState([]);
+
+  web3.eth.getAccounts().then((data) => {
+    setTest(JSON.stringify(data));
+  });
+
   function mint(){
     contract
     .methods
