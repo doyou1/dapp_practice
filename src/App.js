@@ -1,85 +1,81 @@
 import Web3 from "web3";
-import React, {useState, } from "react";
+import React, {useState, useEffect, } from "react";
 
-
-const web3 = new Web3("http://127.0.0.1:8545/");
-//const abi = require("./Storage.json");
+let web3 = new Web3(Web3.givenProvider || "http://127.0.0.1:8545/");
 const abi = require("./MusicCloud.json");
-//const bytecode = require("./Storage_bytecode.json").object;
-const bytecode = require("./MusicCloud_bytecode.json").object;
-const contract = new web3.eth.Contract(abi, '0x9E18BBAd5e44c67422608133B37234abDC3a5F7C');
+const contractAddress = "0x09159090C2213973EE491EcAAE08F9615c539860";
 
-contract.options.gasPrice = '1000000000';
-contract.options.gas = 100000;
+const contract = new web3.eth.Contract(abi, contractAddress);
 
-contract.deploy({
-  data: bytecode,
-  arguments: [100000]
-});
+contract.defaultAccount = "0xDA6C4962518C3b381103ca6FfF16C35bb7E633E3";
 
-const App = () => {
+const App = () => {  
+  const [balance, setBalance] = useState("");
 
-  const [test, setTest] = useState([]);
+  //사용자가 사용중이라고 브라우저가 인식화는 계정
+  let userAccount;
 
-  web3.eth.getAccounts().then((data) => {
-    setTest(JSON.stringify(data));
-  });
+  let checkAccountChange = setInterval(async () => {
+    // 계정이 바뀌었는지 확인
+    let currentAccount = await web3.eth.getAccounts().then((array)=>{
+      return array[0];
+    });
+    // 현재 유저가 들고 있는 계정이 브라우저가 인식하는 계정과 다르다면
+    if(currentAccount !== userAccount){
+      // 계정을 업데이트 해줌
+      userAccount = currentAccount;
+      console.log("Your Account : ", userAccount);
+    }
+  
+  }, 1000); // 1초마다 계정 확인
+  const [resultValue, setResultValue] = useState(null);  
+  
+  const ele_result = document.getElementById("result");
 
-  function mint(){
-    contract
+  async function mint(){
+    let mint_value = Number(document.getElementById("mint_value").value);
+    
+    if(mint_value === 0){
+      console.log("적절한값입력");
+      return false;
+    }
+
+    await contract
     .methods
     .mint(
-      "0x0F5E389Fb28cDeAe3D2cBEFc880B5E4cAF47B4A5"
-      , 10000)
+        userAccount
+      , mint_value)
     .send({
-        from:      "0x0F5E389Fb28cDeAe3D2cBEFc880B5E4cAF47B4A5"
-      })
+      from: userAccount
+    })
     .then((result) => {
       console.log(result);
     });
+    //balance 자동갱신
+    balanceOf();
   }
 
-  function balanceOf(){
-    contract
+  async function balanceOf(){
+    const record = 
+    await contract
     .methods
     .balanceOf(
-      "0xDA6C4962518C3b381103ca6FfF16C35bb7E633E3"
+      userAccount
     )
-    .send({
-        from:      "0xDA6C4962518C3b381103ca6FfF16C35bb7E633E3"
-        , gas: 470000
-    })
-    .then((result) => {
-       console.log(result);
-      // 그래서 트랜잭션 해쉬값으로 뭘...
-      console.log(web3.utils.hexToAscii(web3.utils.toHex(result.transactionHash)));
-      console.log(typeof(result.transactionHash));
-//      console.log(web3.utils.hexToString(result.transactionHash));      
-    });
+    .call();
+    setBalance(record);
+    return record;
   }
 
-  function toHex(s) {
-    let h = ''
-    for (let i = s.length - 1; i >= 0; i--)
-        h = '%'+ s.charCodeAt(i).toString(16) + h
-    return h
-  }
   function totalSupply(){ 
-
-    contract
+    const record = contract
     .methods
     .totalSupply()
-    .send({
-        from:      "0xDA6C4962518C3b381103ca6FfF16C35bb7E633E3"
-        , gas: 470000
-    })
-    .then((result) => {
-      console.log(result);
-      console.log(web3.utils.hexToString(result.transactionHash));
-    });
-
+    .call();
+    console.log(record);
   }
-  const onClick= (event) => {
+
+  const onClick = (event) => {
     event.preventDefault();
     const whatDo = event.target.value;
     if(whatDo == 'mint'){
@@ -111,6 +107,7 @@ const App = () => {
 //    console.log(contract.options.address);
   };
 
+
   return (
     <div className="App">
       <table>
@@ -124,7 +121,7 @@ const App = () => {
         </tr>
         <tr>
           <td>
-
+            <span>{balance}</span>
           </td>
           <td>
             <input type="button" value="balanceOf" onClick={onClick} />
@@ -155,8 +152,8 @@ const App = () => {
           </td>
         </tr>
       </table>
-      <div id="abc">
-
+      <div id="result">
+        {resultValue}
       </div>
     </div>
   );
